@@ -5,100 +5,123 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meta Core Suit Generator</title>
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; padding: 20px; }
-        .container { max-width: 600px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; border: 1px solid #333; }
-        h1 { color: #00ff88; text-align: center; }
-        .input-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="text"] { width: 100%; padding: 8px; border-radius: 4px; border: none; }
-        .checkbox-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
-        button { width: 100%; padding: 12px; background: #00ff88; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        button:hover { background: #00cc6e; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f0f0f; color: #e0e0e0; padding: 20px; }
+        .container { max-width: 650px; margin: 40px auto; background: #161616; padding: 30px; border-radius: 10px; border: 1px solid #00ff88; box-shadow: 0 0 20px rgba(0, 255, 136, 0.1); }
+        h1 { color: #00ff88; text-align: center; font-size: 1.5rem; text-transform: uppercase; margin-bottom: 30px; }
+        .section { margin-bottom: 25px; }
+        label { display: block; margin-bottom: 8px; color: #888; font-size: 0.8rem; text-transform: uppercase; }
+        input[type="text"] { width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #333; background: #222; color: #00ff88; font-family: monospace; box-sizing: border-box; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .opt { background: #222; padding: 12px; border-radius: 5px; display: flex; align-items: center; border: 1px solid #333; cursor: pointer; transition: 0.2s; }
+        .opt:hover { border-color: #00ff88; }
+        .opt input { margin-right: 12px; }
+        button { width: 100%; padding: 15px; background: #00ff88; border: none; border-radius: 5px; font-weight: bold; color: #000; cursor: pointer; margin-top: 20px; font-size: 1rem; }
+        button:hover { background: #00cc6e; box-shadow: 0 0 15px rgba(0, 255, 136, 0.4); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Suit Generator</h1>
+    <h1>Meta Core System: Suit Fabricator</h1>
     
-    <div class="input-group">
-        <label>Suit Identifier (e.g. template_suit)</label>
-        <input type="text" id="suitId" placeholder="custom_suit">
+    <div class="section">
+        <label>Suit Identifier (e.g., mark_85)</label>
+        <input type="text" id="suitId" placeholder="template_suit" value="template_suit">
     </div>
 
-    <div class="input-group">
-        <label>Display Name</label>
-        <input type="text" id="displayName" placeholder="My Cool Suit">
+    <div class="section">
+        <label>Functionality Toggles</label>
+        <div class="options-grid">
+            <label class="opt"><input type="checkbox" id="isNano"> Nano-Tech Animation</label>
+            <label class="opt"><input type="checkbox" id="hasCape"> Enable Cape Animation</label>
+            <label class="opt"><input type="checkbox" id="allowMask" checked> Allow Mask Toggle</label>
+            <label class="opt"><input type="checkbox" id="allowHood" checked> Allow Hood Toggle</label>
+            <label class="opt"><input type="checkbox" id="allowSuitOff" checked> Allow Suit Off</label>
+        </div>
     </div>
 
-    <div class="checkbox-group">
-        <label><input type="checkbox" id="hasMask" checked> Include Mask</label>
-        <label><input type="checkbox" id="hasHood" checked> Include Hood</label>
-        <label><input type="checkbox" id="hasCape"> Include Cape</label>
-        <label><input type="checkbox" id="hasSuitOff" checked> Include Suit-Off</label>
-    </div>
-
-    <button onclick="downloadFiles()">Generate & Download Files</button>
+    <button onclick="downloadFiles()">GENERATE JSON FILE</button>
 </div>
 
 <script>
-    // THE LOGIC WE BUILT
     function generateAttachable(config) {
         const suitId = config.id;
-        const fullId = `suit:${suitId}`;
+        const isNano = config.isNano;
         
-        let animations = { "suit_logic": `controller.animation.${suitId}` };
-        if (config.hasMask) animations["mask_off"] = "animation.suit.mask_off";
-        if (config.hasHood) animations["hood_down"] = "animation.suit.hood_down";
-        if (config.hasSuitOff) animations["suit_off"] = "animation.suit.suit_off";
-        if (config.hasCape) animations["cape"] = "animation.suit.cape";
-
-        let animateScripts = ["suit_logic"];
-        if (config.hasCape) {
-            animateScripts.push({ "cape": "variable.last_g = (query.is_on_ground ? query.life_time : (variable.last_g ?? query.life_time)); return query.modified_move_speed > 0.01 && (query.life_time - variable.last_g < 0.6 || !query.is_sprinting);" });
+        // Setup Textures
+        let textures = { "enchanted": "textures/misc/enchanted_item_glint" };
+        if (isNano) {
+            for (let i = 0; i <= 7; i++) {
+                textures[`nano_${i}`] = `textures/entity/suits/templates/suits/example_nano/${suitId}_${i}`;
+            }
+        } else {
+            textures["default"] = `textures/entity/suits/templates/suits/${suitId}`;
         }
 
-        const json = {
+        // Variable Locking Logic
+        let preAnimation = [
+            `variable.hood = ${config.allowHood ? "query.property('suit:hood_state')" : "0"};`,
+            `variable.mask = ${config.allowMask ? "query.property('suit:mask_state')" : "0"};`,
+            `variable.hidden = ${config.allowSuitOff ? "query.property('suit:hidden')" : "0"};`
+        ];
+
+        if (isNano) {
+            preAnimation.push(
+                "variable.nano_state = query.property('suit:toggle_anim_suit');",
+                "variable.nano_timer = math.clamp((variable.nano_timer ?? 0) + (variable.nano_state ? query.delta_time * 12 : -query.delta_time * 12), 0, 7.9);",
+                "variable.nano_tex_index = math.floor(variable.nano_timer);"
+            );
+        }
+
+        const attachableJson = {
             "format_version": "1.21.0",
             "minecraft:attachable": {
                 "description": {
-                    "identifier": fullId,
-                    "materials": { "default": "entity_emissive_alpha", "enchanted": "armor_enchanted" },
-                    "textures": { "default": `textures/entity/suits/${suitId}/${suitId}`, "enchanted": "textures/misc/enchanted_item_glint" },
-                    "geometry": { "default": `geometry.${suitId}` },
-                    "animations": animations,
-                    "scripts": {
-                        "pre_animation": [
-                            "variable.hood = query.property('suit:hood_state');",
-                            "variable.mask = query.property('suit:mask_state');",
-                            "variable.hidden = query.property('suit:hidden');"
-                        ],
-                        "animate": animateScripts
+                    "identifier": `suit:${suitId}`,
+                    "materials": { 
+                        "default": "entity_emissive_alpha", 
+                        "enchanted": "armor_enchanted" 
                     },
-                    "render_controllers": [`controller.render.suit_${suitId}`]
+                    "textures": textures,
+                    "geometry": { "default": `geometry.${suitId}` },
+                    "animations": {
+                        "suit_logic": `controller.animation.${suitId}`,
+                        "mask_off": "animation.suit.mask_off",
+                        "hood_down": "animation.suit.hood_down",
+                        "suit_off": "animation.suit.suit_off",
+                        "cape": "animation.suit.cape"
+                    },
+                    "scripts": {
+                        "pre_animation": preAnimation,
+                        "animate": [
+                            "suit_logic",
+                            config.hasCape ? { "cape": "variable.last_g = (query.is_on_ground ? query.life_time : (variable.last_g ?? query.life_time)); return query.modified_move_speed > 0.01 && (query.life_time - variable.last_g < 0.6 || !query.is_sprinting);" } : null
+                        ].filter(Boolean)
+                    },
+                    "render_controllers": [isNano ? "controller.render.nano_suit_template" : "controller.render.suit_template"]
                 }
             }
         };
-        return JSON.stringify(json, null, 2);
+
+        return JSON.stringify(attachableJson, null, 2);
     }
 
     function downloadFiles() {
+        const suitName = document.getElementById('suitId').value || 'template_suit';
         const config = {
-            id: document.getElementById('suitId').value || 'template_suit',
-            displayName: document.getElementById('displayName').value || 'Custom Suit',
-            hasMask: document.getElementById('hasMask').checked,
-            hasHood: document.getElementById('hasHood').checked,
+            id: suitName,
+            isNano: document.getElementById('isNano').checked,
             hasCape: document.getElementById('hasCape').checked,
-            hasSuitOff: document.getElementById('hasSuitOff').checked
+            allowMask: document.getElementById('allowMask').checked,
+            allowHood: document.getElementById('allowHood').checked,
+            allowSuitOff: document.getElementById('allowSuitOff').checked
         };
 
-        const attachableContent = generateAttachable(config);
-        
-        // This triggers a download of the attachable JSON file
-        const blob = new Blob([attachableContent], { type: "application/json" });
+        const content = generateAttachable(config);
+        const blob = new Blob([content], { type: "application/json" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = `${config.id}.attachable.json`;
+        link.download = `${suitName}.json`; // Simple naming: suit_name.json
         link.click();
     }
 </script>
