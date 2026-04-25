@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meta Core Suit Generator</title>
+    <style>
+        body { font-family: sans-serif; background: #121212; color: white; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; border: 1px solid #333; }
+        h1 { color: #00ff88; text-align: center; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"] { width: 100%; padding: 8px; border-radius: 4px; border: none; }
+        .checkbox-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
+        button { width: 100%; padding: 12px; background: #00ff88; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #00cc6e; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Suit Generator</h1>
+    
+    <div class="input-group">
+        <label>Suit Identifier (e.g. template_suit)</label>
+        <input type="text" id="suitId" placeholder="custom_suit">
+    </div>
+
+    <div class="input-group">
+        <label>Display Name</label>
+        <input type="text" id="displayName" placeholder="My Cool Suit">
+    </div>
+
+    <div class="checkbox-group">
+        <label><input type="checkbox" id="hasMask" checked> Include Mask</label>
+        <label><input type="checkbox" id="hasHood" checked> Include Hood</label>
+        <label><input type="checkbox" id="hasCape"> Include Cape</label>
+        <label><input type="checkbox" id="hasSuitOff" checked> Include Suit-Off</label>
+    </div>
+
+    <button onclick="downloadFiles()">Generate & Download Files</button>
+</div>
+
+<script>
+    // THE LOGIC WE BUILT
+    function generateAttachable(config) {
+        const suitId = config.id;
+        const fullId = `suit:${suitId}`;
+        
+        let animations = { "suit_logic": `controller.animation.${suitId}` };
+        if (config.hasMask) animations["mask_off"] = "animation.suit.mask_off";
+        if (config.hasHood) animations["hood_down"] = "animation.suit.hood_down";
+        if (config.hasSuitOff) animations["suit_off"] = "animation.suit.suit_off";
+        if (config.hasCape) animations["cape"] = "animation.suit.cape";
+
+        let animateScripts = ["suit_logic"];
+        if (config.hasCape) {
+            animateScripts.push({ "cape": "variable.last_g = (query.is_on_ground ? query.life_time : (variable.last_g ?? query.life_time)); return query.modified_move_speed > 0.01 && (query.life_time - variable.last_g < 0.6 || !query.is_sprinting);" });
+        }
+
+        const json = {
+            "format_version": "1.21.0",
+            "minecraft:attachable": {
+                "description": {
+                    "identifier": fullId,
+                    "materials": { "default": "entity_emissive_alpha", "enchanted": "armor_enchanted" },
+                    "textures": { "default": `textures/entity/suits/${suitId}/${suitId}`, "enchanted": "textures/misc/enchanted_item_glint" },
+                    "geometry": { "default": `geometry.${suitId}` },
+                    "animations": animations,
+                    "scripts": {
+                        "pre_animation": [
+                            "variable.hood = query.property('suit:hood_state');",
+                            "variable.mask = query.property('suit:mask_state');",
+                            "variable.hidden = query.property('suit:hidden');"
+                        ],
+                        "animate": animateScripts
+                    },
+                    "render_controllers": [`controller.render.suit_${suitId}`]
+                }
+            }
+        };
+        return JSON.stringify(json, null, 2);
+    }
+
+    function downloadFiles() {
+        const config = {
+            id: document.getElementById('suitId').value || 'template_suit',
+            displayName: document.getElementById('displayName').value || 'Custom Suit',
+            hasMask: document.getElementById('hasMask').checked,
+            hasHood: document.getElementById('hasHood').checked,
+            hasCape: document.getElementById('hasCape').checked,
+            hasSuitOff: document.getElementById('hasSuitOff').checked
+        };
+
+        const attachableContent = generateAttachable(config);
+        
+        // This triggers a download of the attachable JSON file
+        const blob = new Blob([attachableContent], { type: "application/json" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `${config.id}.attachable.json`;
+        link.click();
+    }
+</script>
+
+</body>
+</html>
